@@ -11,43 +11,18 @@ from matplotlib import pyplot as plt
 
 ####################################################################################################
 ### This section will define the necessary functions                                             ###
-###     1. Restatement of Euler's Equations for the Numerical Solver to chew on                  ###
-###     2. Restatement of Euler-Rodrigues Parameter Equations for the Numerical solver           ###
-###     3. Analytical closed-form solution for Angular Velocity components for any time, t       ###
-###     4. Analytical closed-form solution for Euler-Rodrigues Parameters for any time, t        ###
+###     1. Definition of the system for the Numerical Solver to chew on                          ###
+###     2. Analytical closed-form solution for Angular Velocity components for any time, t       ###
+###     3. Analytical closed-form solution for Euler-Rodrigues Parameters for any time, t        ###
+###     4. Function to input a 3-coordinate vector and rotate by a quaternion, returning a vector###
 ####################################################################################################
 
-def rotate_vector_by_quaternion(v, q):
-    """
-    Rotates a 3D vector v using a quaternion q (scalar-last notation).
 
-    Parameters:
-    v : array-like, shape (3,)
-        The 3D vector to rotate.
-    q : array-like, shape (4,)
-        The quaternion (qx, qy, qz, qs) where qs is the scalar part.
-
-    Returns:
-    v_rot : ndarray, shape (3,)
-        The rotated vector.
-    """
-    v = np.array(v)
-    qv = np.array(q[:3])  # Vector part of quaternion
-    qs = q[3]  # Scalar part of quaternion
-
-    # Compute cross products and dot products
-    qv_cross_v = np.cross(qv, v)
-    qv_cross_qv_cross_v = np.cross(qv, qv_cross_v)
-
-    # Apply quaternion rotation formula
-    v_rot = v + 2 * (qs * qv_cross_v + qv_cross_qv_cross_v)
-
-    return v_rot
-
-# Define diff eq system for Numerical Solver in scipy
+# Define diff eq system for Numerical Solver in scipy (combine both eqns into 1 function)
 #   t: time
-#   omega: angular velocity
+#   z: state vector (w1, w2, w3, q1, q2, q3, q4)
 #   I: Inertia matrix
+#   returns dz: (dw1, dw2, dw3, dq1, dq2, dq3, dq4)
 def euler_equations(t, z, I):
     # Computes d(omega)/dt using Euler's equations for a free rigid body.
     z = np.transpose(z)
@@ -143,20 +118,42 @@ def quat_analytical(t, w, q0):
     return np.transpose(q)
 
 
+## Define function to rotate a vector by a quaternion (scalar last notation)
+#   v: 3d vector
+#   q: 4d vector (x, y, z, s)
+#   returns a new vector (v rotated by q)
+def rotate_vector_by_quaternion(v, q):
+    v = np.array(v)
+    qv = np.array(q[:3])  # Vector part of quaternion
+    qs = q[3]  # Scalar part of quaternion
+
+    # Compute cross products and dot products
+    qv_cross_v = np.cross(qv, v)
+    qv_cross_qv_cross_v = np.cross(qv, qv_cross_v)
+
+    # Apply quaternion rotation formula
+    v_rot = v + 2 * (qs * qv_cross_v + qv_cross_qv_cross_v)
+
+    return v_rot
+
+
 ####################################################################################################
 ### This section will Define the Parameters for a particular Test Case                           ###
 ####################################################################################################
-I = [5, 4, 5]  # Moments of Inertia
-omega0 = [0.0181844, 0.128911, 0]  # Initial angular velocity
-q0 = [0, 0, 0.0871557, 0.996195]   # Initial euler-rodrigues parameters
+test_case = 2
 
+if test_case == 1:
+    I = [5, 4, 5]  # Moments of Inertia
+    omega0 = [0.0181844, 0.128911, 0]  # Initial angular velocity
+    q0 = [0, 0, 0.0871557, 0.996195]   # Initial euler-rodrigues parameters
+else:
+    I = [5, 4, 4]  # Moments of Inertia
+    omega0 = [0.0592384, 0, 0.0740480]  # Initial angular velocity
+    q0 = [0, 0.382683, 0, 0.923880]   # Initial euler-rodrigues parameters
 
-#I = [5, 4, 4]  # Moments of Inertia
-#omega0 = [0.0592384, 0, 0.0740480]  # Initial angular velocity
-#q0 = [0, 0.382683, 0, 0.923880]   # Initial euler-rodrigues parameters
-t_span = (0, 1000)  # Integration time range
-state_0 = omega0 + q0
-#print(state_0)
+t_span = (0, 500)  # Integration time range
+state_0 = omega0 + q0 # This is the overall test state initial conditions (w1, w2, w3, q1, q2, q3, q4) at t=0
+
 ####################################################################################################
 ### This section will compute and plot the numerical solution for both Differential Eqn Systems  ###
 ####################################################################################################
@@ -229,7 +226,7 @@ H_c = np.zeros((len(t_vals), 3))
 H_c[:, 0] = h1_c
 H_c[:, 1] = h2_c
 H_c[:, 2] = h3_c
-print(H_c[:10, :10])
+#print(H_c[:10, :10])
 ## Use quaternion at each time step to rotate to Inertial Frame 'F'
 H_f = np.zeros((len(H_c), 3))
 
@@ -265,13 +262,7 @@ elif I[0] is I[2]:
 theta = np.zeros((len(H_c), 1))
 for k in range(0, len(H_c)):
     theta[k] = np.acos(H_c[k, symmetry_axis]/np.linalg.norm(H_c[k, :]))
-    print(H_c[k, symmetry_axis])
-    print(np.linalg.norm(H_c[k, :]))
 
-print(np.degrees(theta))
-
-print('nutation check')
-print(np.atan(np.sqrt((I[0]*omega0[0])**2 + (I[2]*omega0[2])**2)/(I[1]*omega0[1]))*180/np.pi)
 
 ## Compute Spin Angle
 e_c_node = np.cross(H_c[0, :], e_ref)/np.linalg.norm(np.cross(H_c[0, :], e_ref))
@@ -305,25 +296,31 @@ psi = np.atan2(np.dot(u_f, v_f[0,:]), np.dot(u_f,u_f[0,:]))
 
 
 fig1, ax1 = plt.subplots(4, 1, figsize=(12,16))
-#fig1.suptitle('Plot 1')
-fig1.canvas.manager.set_window_title('Plot 1')
-
+fig1.canvas.manager.set_window_title('State Plots')
+plt.subplots_adjust(hspace=0.4)
 ax1[0].plot(t_vals, omega_vals)
 ax1[1].plot(t_vals, q_vals)
 ax1[0].legend([r'$\omega_1$', r'$\omega_2$', r'$\omega_3$'])
 ax1[1].legend([r'$\epsilon_1$', r'$\epsilon_2$', r'$\epsilon_3$', r'$\epsilon_4$'])
 ax1[0].set_title('Angular Velocity - Numerical Solution')
 ax1[1].set_title('Euler.Rodrigues Parameters - Numerical Solution')
+ax1[0].set_xlabel('time (s)')
+ax1[1].set_ylabel('rad/s')
+ax1[0].set_xlabel('time (s)')
 ax1[2].plot(t_vals, omega_analytical)
 ax1[3].plot(t_vals, q_analytical)
 ax1[2].legend([r'$\omega_1$', r'$\omega_2$', r'$\omega_3$'])
 ax1[3].legend([r'$\epsilon_1$', r'$\epsilon_2$', r'$\epsilon_3$', r'$\epsilon_4$'])
 ax1[2].set_title('Angular Velocity - Analytical Solution')
 ax1[3].set_title('Euler.Rodrigues Parameters - Analytical Solution')
+ax1[2].set_xlabel('time (s)')
+ax1[3].set_ylabel('rad/s')
+ax1[2].set_xlabel('time (s)')
 
 fig2, ax2 = plt.subplots(4, 1, figsize=(12,16))
 #fig3.suptitle('Plot 3')
 fig2.canvas.manager.set_window_title('Error Plot')
+plt.subplots_adjust(hspace=0.4)
 ax2[0].plot(t_vals, omega_error)
 ax2[1].plot(t_vals, q_error)
 ax2[0].legend([r'$\omega_1$', r'$\omega_2$', r'$\omega_3$'])
@@ -334,9 +331,15 @@ ax2[0].set_title('Absolute Error -- Angular Velocity')
 ax2[1].set_title('Absolute Error -- Euler.Rodrigues Parameters')
 ax2[2].set_title('Quaternion Unity Error -- Numerical Solution')
 ax2[3].set_title('Quaternion Unity Error - Analytical Solution')
-
+ax2[0].set_xlabel('time (s)')
+ax2[0].set_ylabel('rad/s')
+ax2[1].set_xlabel('time (s)')
+ax2[2].set_xlabel('time (s)')
+ax2[3].set_xlabel('time (s)')
 
 fig3, ax3 = plt.subplots(3, 1, figsize=(12,16))
+fig3.canvas.manager.set_window_title('Angular Momentum Plots')
+plt.subplots_adjust(hspace=0.4)
 ax3[0].plot(t_vals, H_c)
 ax3[0].set_title('Angular Momentum represented in the Body Frame, C')
 ax3[0].legend([r'$h_1(t)$', r'$h_2(t)$', r'$h_3(t)$'])
@@ -346,23 +349,37 @@ ax3[1].legend([r'$h_1(t)$', r'$h_2(t)$', r'$h_3(t)$'])
 ax3[2].plot(t_vals, H_f-H_f[0, :])
 ax3[2].set_title('Angular Momentum difference from initial Angular Momentum\nRepresented in the Inertial Frame, F')
 ax3[2].legend([r'$h_1(t)-h_1(0) $', r'$h_2(t)-h_2(0)$', r'$h_3(t)-h_3(0)$'])
+ax3[0].set_xlabel('time (s)')
+ax3[0].set_ylabel(r'$kg*m^2/s$')
+ax3[1].set_xlabel('time (s)')
+ax3[1].set_ylabel(r'$kg*m^2/s$')
+ax3[2].set_xlabel('time (s)')
+ax3[2].set_ylabel(r'$kg*m^2/s$')
 
 fig4, ax4 = plt.subplots(3, 1, figsize=(12,16))
+fig4.canvas.manager.set_window_title('Euler Angle Plots')
+plt.subplots_adjust(hspace=0.4)
 ax4[0].plot(t_vals, np.degrees(theta))
-ax4[0].set_ylim(0, 15)
+ax4[0].set_ylim(0, 90)
 ax4[0].set_title('Nutation Angle vs. Time')
 ax4[0].legend([r'$\theta^\degree$'])
 ax4[1].plot(t_vals, np.degrees(psi))
-#ax4[0].set_ylim(0, 15)
 ax4[1].set_title('Precession Angle vs. Time')
 ax4[1].legend([r'$\psi^\degree$'])
 ax4[2].plot(t_vals, np.degrees(phi))
-#ax4[0].set_ylim(0, 15)
 ax4[2].set_title('Spin Angle vs. Time')
 ax4[2].legend([r'$\phi^\degree$'])
+ax4[0].set_xlabel('time (s)')
+ax4[0].set_ylabel(r'$\degree$')
+ax4[1].set_xlabel('time (s)')
+ax4[1].set_ylabel(r'$\degree$')
+ax4[2].set_xlabel('time (s)')
+ax4[2].set_ylabel(r'$\degree$')
 
-fig1.savefig('Plots.png')
+fig1.savefig('State_Plots.png')
 fig2.savefig('Errors.png')
+fig3.savefig('Momentum.png')
+fig4.savefig('EulerAngles.png')
 plt.show()
 
 
