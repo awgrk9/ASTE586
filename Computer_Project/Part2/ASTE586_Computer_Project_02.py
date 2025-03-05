@@ -20,32 +20,31 @@ from matplotlib import pyplot as plt
 #   t: time
 #   omega: angular velocity
 #   I: Inertia matrix
-def euler_equations(t, omega, I):
+def euler_equations(t, z, I):
     # Computes d(omega)/dt using Euler's equations for a free rigid body.
-    omega = np.transpose(omega)
-    alpha = np.zeros((3, 1)) # Initialize alpha vector
+    z = np.transpose(z)
+    dz = [0, 0, 0, 0, 0, 0, 0] # Initialize alpha vector
     # Compute angular acceleration (alpha)
-    alpha[0] = (I[1] - I[2]) * omega[1] * omega[2] / I[0]
-    alpha[1] = (I[2] - I[0]) * omega[0] * omega[2] / I[1]
-    alpha[2] = (I[0] - I[1]) * omega[0] * omega[1] / I[2]
+    dz[0] = (I[1] - I[2]) * z[1] * z[2] / I[0]
+    dz[1] = (I[2] - I[0]) * z[0] * z[2] / I[1]
+    dz[2] = (I[0] - I[1]) * z[0] * z[1] / I[2]
 
-    return np.transpose(alpha)
-
-# Define diff eq system for Numerical Solver in scipy
-#   t: time
-#   q: 1x4 array | Euler-Rodrigues Parameters 1-4
-#   omega_interp: Interpolated angular velocity function to feed the Euler-Rodrigues equation (eqn 1 in handout)
-def quaternion_equations(t, q, omega_interp):
-    q1, q2, q3, q4 = q
-    omega = omega_interp(t)
+    q1, q2, q3, q4 = z[3:]
+     #print('p', q1, q2, q3, q4)
     # M can be found in the notes: "aste586-supplement-8-quaternion-rates-20250226.pdf"
     M = np.array([[ q4, -q3,  q2],
                   [ q3,  q4, -q1],
                   [-q2,  q1,  q4],
                   [-q1, -q2, -q3]])
-    dq_dt = 0.5 * M @ omega
+    #print(M.shape)
+    #print(z[:3].shape)
+    dq = 0.5 * M @ z[:3]
+    dz[3] = dq[0]
+    dz[4] = dq[1]
+    dz[5] = dq[2]
+    dz[6] = dq[3]
+    return dz
 
-    return dq_dt
 
 ## Define function to Compute Analytical Solution for Angular velocity assuming axisymmetry
 #   t: time
@@ -67,7 +66,7 @@ def euler_analytical(t, omega_0, I):
         first_axis = 1   # First  equal I_x axis
         second_axis = 2  # Second equal I_x axis
         # define lambda based on symmetry axis
-        lamd = omega_0[symmetry_axis] * (I[1] - I[symmetry_axis]) / I[1]
+        lamd = -omega_0[symmetry_axis] * (I[1] - I[symmetry_axis]) / I[1]
 
     elif I[0] is I[2]:
         symmetry_axis = 1
@@ -97,20 +96,12 @@ def quat_analytical(t, w, q0):
     # See my report for further explanation of the M_star term and how it was derived
     # For the purposes of code commenting, M_star is just a 4x4 skew-symmetric matrix comprised of previously computed
     #   angular velocity components.
+    print(w)
     M_star = np.array([[ 0   ,  w[2], -w[1],  w[0]],
                        [-w[2],  0   ,  w[0],  w[1]],
                        [ w[1], -w[0],  0.  ,  w[2]],
                        [-w[0], -w[1], -w[2],  0   ]])
-    # General analytical solution. Note I am using sciPy's Matrix Exponential as I didn't have the knowledge to
-    #   simplify the matrix exponential to a better form. If this proves to add unacceptable error into the computation,
-    #   it will be the first thing on the chopping block...
-    #theta = np.linalg.norm(w)
-    #M_star_test = np.array([[np.cosh(theta*t/2), -w[2]/theta*np.sinh(theta*t/2), w[1]/theta*np.sinh(theta*t/2), -w[0]/theta*np.sinh(theta*t/2)],
-    #                        [w[2]/theta*np.sinh(theta*t/2), np.cosh(theta*t/2), -w[0]/theta*np.sinh(theta*t/2), -w[1]/theta*np.sinh(theta*t/2)],
-    #                        [-w[1]/theta*np.sinh(theta*t/2), w[0]/theta*np.sinh(theta*t/2), np.cosh(theta*t/2), -w[2]/theta*np.sinh(theta*t/2)],
-    #                        [w[0]/theta*np.sinh(theta*t/2), w[1]/theta*np.sinh(theta*t/2), w[2]/theta*np.sinh(theta*t/2), np.cosh(theta*t/2)]])
-    #M_star_test_2 = np.eye(4) + (np.sinh(theta*t/2)/theta) * M_star + (np.cosh(theta*t/2)-1)*np.square(M_star)/theta**2
-    #M_star_test_3 = np.cosh(theta*t/2)*np.eye(4) + (np.sinh(theta*t/2)/theta) * M_star
+
     A = 1/2*M_star*t
     eigenvalues, P = np.linalg.eig(A)  # Get eigenvalues and eigenvectors
     D = np.diag(np.exp(eigenvalues))  # Exponentiate eigenvalues
@@ -130,12 +121,17 @@ def quat_analytical(t, w, q0):
 ####################################################################################################
 ### This section will Define the Parameters for a particular Test Case                           ###
 ####################################################################################################
-
 I = [5, 4, 5]  # Moments of Inertia
 omega0 = [0.0181844, 0.128911, 0]  # Initial angular velocity
 q0 = [0, 0, 0.0871557, 0.996195]   # Initial euler-rodrigues parameters
-t_span = (0, 1000)  # Integration time range
 
+
+#I = [5, 4, 4]  # Moments of Inertia
+#omega0 = [0.0592384, 0, 0.0740480]  # Initial angular velocity
+#q0 = [0, 0.382683, 0, 0.923880]   # Initial euler-rodrigues parameters
+t_span = (0, 1000)  # Integration time range
+state_0 = omega0 + q0
+print(state_0)
 ####################################################################################################
 ### This section will compute and plot the numerical solution for both Differential Eqn Systems  ###
 ####################################################################################################
@@ -145,46 +141,35 @@ t_span = (0, 1000)  # Integration time range
 #   I'll then use those same time steps when assessing the analytical solution.
 
 # Solve ODE
-solution_omega = sp.integrate.solve_ivp(euler_equations,
-                                        t_span=t_span,
-                                        y0=omega0,
-                                        args=(I,),
-                                        rtol=1E-8,
-                                        atol=1E-8)
+solution_numerical = sp.integrate.solve_ivp(euler_equations,
+                                            t_span=t_span,
+                                            y0=state_0,
+                                            args=(I,),
+                                            rtol=1E-12,
+                                            atol=1E-12)
 
 
-## Interpolate omega(t) to get continuous function for use in the quaternion equation.
-omega_interp = sp.interpolate.interp1d(solution_omega.t,
-                                       solution_omega.y,
-                                       axis=1,
-                                       kind='cubic',
-                                       fill_value="extrapolate")
 
-# Solve ODE
-solution_q = sp.integrate.solve_ivp(quaternion_equations,
-                                    t_span=t_span,
-                                    y0=q0,
-                                    args=(omega_interp,),
-                                    rtol=1E-8,
-                                    atol=1E-8)
+
 
 
 # Extract results
-t_vals_omega = np.transpose(solution_omega.t)
-omega_vals   = np.transpose(solution_omega.y)
-t_vals_q     = np.transpose(solution_q.t)
-q_vals       = np.transpose(solution_q.y)
+t_vals       = np.transpose(solution_numerical.t)
+omega_vals   = np.transpose(solution_numerical.y[:3, :])
+q_vals       = np.transpose(solution_numerical.y[3:, :])
+
 
 ## Plotting section
-fig1, ax1 = plt.subplots(2, 1, figsize=(12,16))
-fig1.suptitle('Plot 1')
+fig1, ax1 = plt.subplots(4, 1, figsize=(12,16))
+#fig1.suptitle('Plot 1')
 fig1.canvas.manager.set_window_title('Plot 1')
 
-ax1[0].plot(t_vals_omega, omega_vals)
-ax1[1].plot(t_vals_q, q_vals)
+ax1[0].plot(t_vals, omega_vals)
+ax1[1].plot(t_vals, q_vals)
 ax1[0].legend([r'$\omega_1$', r'$\omega_2$', r'$\omega_3$'])
 ax1[1].legend([r'$\epsilon_1$', r'$\epsilon_2$', r'$\epsilon_3$', r'$\epsilon_4$'])
-
+ax1[0].set_title('Angular Velocity - Numerical Solution')
+ax1[1].set_title('Euler.Rodrigues Parameters - Numerical Solution')
 
 ####################################################################################################
 ### This section will compute and plot the analytical solution for both Differential Eqn Systems ###
@@ -192,10 +177,10 @@ ax1[1].legend([r'$\epsilon_1$', r'$\epsilon_2$', r'$\epsilon_3$', r'$\epsilon_4$
 
 
 # Define empty array for analytical omega solution to go into
-omega_analytical = np.zeros((len(t_vals_q), 3))
+omega_analytical = np.zeros((len(t_vals), 3))
 # Compute analytical omega from the 'euler_analytical' function for each time step declared by the numerical integrator
 i = 0
-for time in t_vals_q:
+for time in t_vals:
     print(omega_analytical[i, :])
     omega_analytical[i, :] = euler_analytical(time, omega0, I)
     print(omega_analytical[i, :])
@@ -206,10 +191,10 @@ for time in t_vals_q:
 
 
 # Define empty array for analytical quaternion solution to go into
-q_analytical = np.zeros((len(t_vals_q), 4))
+q_analytical = np.zeros((len(t_vals), 4))
 # Compute analytical quaternions from the 'quat_analytical' function for each time step declared by the numerical integrator
 i = 0
-for time in t_vals_q:
+for time in t_vals:
     print(q_analytical[i, :])
     q_analytical[i, :] = quat_analytical(time, omega_analytical[i, :], q0)
     print(q_analytical[i, :])
@@ -220,30 +205,37 @@ for time in t_vals_q:
 
 
 ## Plotting section
-fig2, ax2 = plt.subplots(4, 1, figsize=(12,16))
-fig2.suptitle('Plot 2')
-fig2.canvas.manager.set_window_title('Euler Solve Analytically')
 
-ax2[0].plot(t_vals_q, omega_analytical)
-ax2[1].plot(t_vals_q, q_analytical)
-ax2[0].legend([r'$\omega_1$', r'$\omega_2$', r'$\omega_3$'])
-ax2[1].legend([r'$\epsilon_1$', r'$\epsilon_2$', r'$\epsilon_3$', r'$\epsilon_4$'])
-
+ax1[2].plot(t_vals, omega_analytical)
+ax1[3].plot(t_vals, q_analytical)
+ax1[2].legend([r'$\omega_1$', r'$\omega_2$', r'$\omega_3$'])
+ax1[3].legend([r'$\epsilon_1$', r'$\epsilon_2$', r'$\epsilon_3$', r'$\epsilon_4$'])
+ax1[2].set_title('Angular Velocity - Analytical Solution')
+ax1[3].set_title('Euler.Rodrigues Parameters - Analytical Solution')
 
 
 ## Compute Angular Velocity DIfference Numerical-Analytical
 omega_error = omega_vals - omega_analytical
-fig3, ax3 = plt.subplots(1, 1, figsize=(12,16))
-fig3.suptitle('Plot 3')
+q_error = q_vals - q_analytical
+fig3, ax3 = plt.subplots(4, 1, figsize=(12,16))
+#fig3.suptitle('Plot 3')
 fig3.canvas.manager.set_window_title('Error Plot')
-ax3.plot(t_vals_q, omega_error)
+ax3[0].plot(t_vals, omega_error)
+ax3[1].plot(t_vals, q_error)
 
 ## Compute Quaternion Unity for Numerical and Analytical
 q_unity_numerical  = q_vals[:, 0]**2 + q_vals[:, 1]**2 + q_vals[:, 2]**2 + q_vals[:, 3]**2 - 1
 q_unity_analytical = q_analytical[:, 0]**2 + q_analytical[:, 1]**2 + q_analytical[:, 2]**2 + q_analytical[:, 3]**2 - 1
-ax2[2].plot(t_vals_q, q_unity_numerical)
-ax2[3].plot(t_vals_q, q_unity_analytical)
+ax3[2].plot(t_vals, q_unity_numerical)
+ax3[3].plot(t_vals, q_unity_analytical)
 
+ax3[0].set_title('Absolute Error -- Angular Velocity')
+ax3[1].set_title('Absolute Error -- Euler.Rodrigues Parameters')
+ax3[2].set_title('Quaternion Unity Error -- Numerical Solution')
+ax3[3].set_title('Quaternion Unity Error - Analytical Solution')
+
+fig1.savefig('Plots.png')
+fig3.savefig('Errors.png')
 plt.show()
 
 
