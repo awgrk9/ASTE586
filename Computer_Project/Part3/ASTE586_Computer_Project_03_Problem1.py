@@ -7,6 +7,10 @@ import numpy as np
 import scipy as sp
 from matplotlib import pyplot as plt
 
+import matplotlib.animation as animation
+from mpl_toolkits.mplot3d import Axes3D
+
+
 
 ####################################################################################################
 ### This section will define the necessary functions                                             ###
@@ -142,16 +146,16 @@ def rotate_vector_by_quaternion(v, q):
 test_case = 1
 
 if test_case == 1:
-    I = [5, 4, 5]  # Moments of Inertia
-    omega0 = [0.0181844, 0.128911, 0]  # Initial angular velocity
-    q0 = [0, 0, 0.0871557, 0.996195]   # Initial euler-rodrigues parameters
-    t_span = (0, 500)  # Integration time range
+    I = [1.6975, 1.6975, 2.5272]
+    omega0 = [0, 0.41071176, 4.69445692]  # Initial angular velocity
+    q0 = [0, 0, 0, 1]   # Initial euler-rodrigues parameters
+    t_span = (0, 100)  # Integration time range
 
 else:
     I = [5, 4, 4]  # Moments of Inertia
     omega0 = [0.0592384, 0, 0.0740480]  # Initial angular velocity
     q0 = [0, 0.382683, 0, 0.923880]   # Initial euler-rodrigues parameters
-    t_span = (0, 850)  # Integration time range
+    t_span = (0, 100)  # Integration time range
 
 state_0 = omega0 + q0 # This is the overall test state initial conditions (w1, w2, w3, q1, q2, q3, q4) at t=0
 
@@ -399,40 +403,221 @@ fig2.savefig('Errors.png')
 fig3.savefig('Momentum.png')
 fig4.savefig('EulerAngles.png')
 
-if test_case == 1:
-    for i, ax in enumerate(ax1):
-        extent = ax.get_tightbbox(fig1.canvas.get_renderer()).transformed(fig1.dpi_scale_trans.inverted())
-        fig1.savefig(f"./Part2_Submission/10subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
+# if test_case == 1:
+#     for i, ax in enumerate(ax1):
+#         extent = ax.get_tightbbox(fig1.canvas.get_renderer()).transformed(fig1.dpi_scale_trans.inverted())
+#         fig1.savefig(f"./Part3_Submission/10subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
+#
+#     for i, ax in enumerate(ax2):
+#         extent = ax.get_tightbbox(fig2.canvas.get_renderer()).transformed(fig2.dpi_scale_trans.inverted())
+#         fig2.savefig(f"./Part3_Submission/11subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
+#
+#     for i, ax in enumerate(ax3):
+#         extent = ax.get_tightbbox(fig3.canvas.get_renderer()).transformed(fig3.dpi_scale_trans.inverted())
+#         fig3.savefig(f"./Part3_Submission/12subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
+#
+#     for i, ax in enumerate(ax4):
+#         extent = ax.get_tightbbox(fig4.canvas.get_renderer()).transformed(fig4.dpi_scale_trans.inverted())
+#         fig4.savefig(f"./Part3_Submission/13subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
+# else:
+#     for i, ax in enumerate(ax1):
+#         extent = ax.get_tightbbox(fig1.canvas.get_renderer()).transformed(fig1.dpi_scale_trans.inverted())
+#         fig1.savefig(f"./Part3_Submission/10subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
+#
+#     for i, ax in enumerate(ax2):
+#         extent = ax.get_tightbbox(fig2.canvas.get_renderer()).transformed(fig2.dpi_scale_trans.inverted())
+#         fig2.savefig(f"./Part3_Submission/11subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
+#
+#     for i, ax in enumerate(ax3):
+#         extent = ax.get_tightbbox(fig3.canvas.get_renderer()).transformed(fig3.dpi_scale_trans.inverted())
+#         fig3.savefig(f"./Part3_Submission/12subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
+#
+#     for i, ax in enumerate(ax4):
+#         extent = ax.get_tightbbox(fig4.canvas.get_renderer()).transformed(fig4.dpi_scale_trans.inverted())
+#         fig4.savefig(f"./Part3_Submission/13subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
 
-    for i, ax in enumerate(ax2):
-        extent = ax.get_tightbbox(fig2.canvas.get_renderer()).transformed(fig2.dpi_scale_trans.inverted())
-        fig2.savefig(f"./Part2_Submission/11subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
+#plt.show()
 
-    for i, ax in enumerate(ax3):
-        extent = ax.get_tightbbox(fig3.canvas.get_renderer()).transformed(fig3.dpi_scale_trans.inverted())
-        fig3.savefig(f"./Part2_Submission/12subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
 
-    for i, ax in enumerate(ax4):
-        extent = ax.get_tightbbox(fig4.canvas.get_renderer()).transformed(fig4.dpi_scale_trans.inverted())
-        fig4.savefig(f"./Part2_Submission/13subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
-else:
-    for i, ax in enumerate(ax1):
-        extent = ax.get_tightbbox(fig1.canvas.get_renderer()).transformed(fig1.dpi_scale_trans.inverted())
-        fig1.savefig(f"./Part2_Submission/10subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
+## Use quaternion at each time step to rotate body axes to Inertial Frame 'F'
+e_c_1 = np.zeros((len(H_c), 3))
+e_c_2 = np.zeros((len(H_c), 3))
+e_c_3 = np.zeros((len(H_c), 3))
+antenna = np.zeros((len(H_c), 3))
 
-    for i, ax in enumerate(ax2):
-        extent = ax.get_tightbbox(fig2.canvas.get_renderer()).transformed(fig2.dpi_scale_trans.inverted())
-        fig2.savefig(f"./Part2_Submission/11subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
 
-    for i, ax in enumerate(ax3):
-        extent = ax.get_tightbbox(fig3.canvas.get_renderer()).transformed(fig3.dpi_scale_trans.inverted())
-        fig3.savefig(f"./Part2_Submission/12subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
 
-    for i, ax in enumerate(ax4):
-        extent = ax.get_tightbbox(fig4.canvas.get_renderer()).transformed(fig4.dpi_scale_trans.inverted())
-        fig4.savefig(f"./Part2_Submission/13subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
+for j in range(0, len(e_c_1)):
+    e_c_1[j, :] = rotate_vector_by_quaternion([1,0,0], q_vals[j, :])
+    e_c_2[j, :] = rotate_vector_by_quaternion([0,1,0], q_vals[j, :])
+    e_c_3[j, :] = rotate_vector_by_quaternion([0,0,1], q_vals[j, :])
+    antenna[j,:] = rotate_vector_by_quaternion([0,np.sin(np.radians(5)),np.cos(np.radians(5))], q_vals[j, :])
 
+
+
+# Create figure and 3D axis
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+omega_x = omega_vals[:,0]
+omega_y = omega_vals[:,1]
+omega_z = omega_vals[:,2]
+
+
+# Set axis labels
+ax.set_xlabel('X Component')
+ax.set_ylabel('Y Component')
+ax.set_zlabel('Z Component')
+ax.set_title('Animated 3D Vector Trajectory')
+
+# Initialize plot elements
+line, = ax.plot([], [], [], 'b', label=r'$\omega_0$ trajectory')  # Line for trajectory
+point, = ax.plot([], [], [], 'ro')  # Moving point indicator
+origin_line, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
+axis_line, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
+
+time_text = ax.text(0, 0, 0, '', fontsize=12, color='black')  # Time text annotation
+
+# Set axis limits
+ax.set_xlim([min(omega_x), max(omega_x)])
+ax.set_ylim([min(omega_y), max(omega_y)])
+ax.set_zlim([0, max(omega_z)])
+
+
+# Animation function
+def update(frame):
+    line.set_data(omega_x[:frame], omega_y[:frame])
+    line.set_3d_properties(omega_z[:frame])
+
+    # Ensure point takes a sequence (using a list or array with one element)
+    point.set_data([omega_x[frame-1]], [omega_y[frame-1]])
+    point.set_3d_properties([omega_z[frame-1]])
+
+    # Update line from origin to current point
+    origin_line.set_data([0, omega_x[frame-1]], [0, omega_y[frame-1]])
+    origin_line.set_3d_properties([0, omega_z[frame-1]])
+
+    # Update time text
+    time_text.set_position((1, 0))  # Keep it near origin
+    time_text.set_text(f'Time: {t_vals[frame-1]:.2f}s')
+    time_text.set_3d_properties(omega_z[frame-1])  # Adjust text height dynamically
+
+    return line, point
+
+
+# Create animation
+ani = animation.FuncAnimation(fig, update, frames=len(t_vals), interval=50, blit=False)
+axis_line.set_data([0, 0], [0, 0])
+axis_line.set_3d_properties([0, max(omega_z)])
+plt.legend()
 plt.show()
 
 
 
+
+# Create figure and 3D axis
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+e_c_1_x = e_c_1[:,0]
+e_c_1_y = e_c_1[:,1]
+e_c_1_z = e_c_1[:,2]
+
+e_c_2_x = e_c_2[:,0]
+e_c_2_y = e_c_2[:,1]
+e_c_2_z = e_c_2[:,2]
+
+e_c_3_x = e_c_3[:,0]
+e_c_3_y = e_c_3[:,1]
+e_c_3_z = e_c_3[:,2]
+
+antenna_x = antenna[:,0]
+antenna_y = antenna[:,1]
+antenna_z = antenna[:,2]  # Set axis labels
+
+ax.set_xlabel('X Component')
+ax.set_ylabel('Y Component')
+ax.set_zlabel('Z Component')
+ax.set_title('Animated 3D Vector Trajectory')
+
+# Initialize plot elements
+
+antenna_traj, = ax.plot([], [], [], 'o', label='antenna trajectory')  # Line for trajectory
+antenna_point, = ax.plot([], [], [], 'ro')  # Moving point indicator
+e_c_3_traj, = ax.plot([], [], [], 'p', label=r'$e^c_3$ trajectory')  # Line for trajectory
+e_c_3_point, = ax.plot([], [], [], 'ro')  # Moving point indicator
+axis_line1, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
+axis_line2, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
+axis_line3, = ax.plot([], [], [], 'y-', linewidth=2)  # Line from origin to point
+nadir_line, = ax.plot([], [], [], 'g-', linewidth=2)  # Line from origin to point
+antenna_line, = ax.plot([], [], [], 'b-', linewidth=2)  # Line from origin to point
+
+time_text1 = ax.text(0, 0, 0, '', fontsize=12, color='black')  # Time text annotation
+
+# Set axis limits
+ax.set_xlim([-1, 1])
+ax.set_ylim([-1, 1])
+ax.set_zlim([-1, 1])
+
+
+# Animation function
+def update(frame):
+
+    antenna_traj.set_data(antenna_x[:frame], antenna_y[:frame])
+    antenna_traj.set_3d_properties(antenna_z[:frame])
+
+    e_c_3_traj.set_data(e_c_3_x[:frame], e_c_3_y[:frame])
+    e_c_3_traj.set_3d_properties(e_c_3_z[:frame])
+
+    # Ensure point takes a sequence (using a list or array with one element)
+    e_c_3_point.set_data([e_c_3_x[frame-1]], [e_c_3_y[frame-1]])
+    e_c_3_point.set_3d_properties([e_c_3_z[frame-1]])
+
+    antenna_point.set_data([antenna_x[frame-1]], [antenna_y[frame-1]])
+    antenna_point.set_3d_properties([antenna_z[frame-1]])
+
+    # Update line from origin to current point
+    axis_line1.set_data([0, e_c_1_x[frame-1]], [0, e_c_1_y[frame-1]])
+    axis_line1.set_3d_properties([0, e_c_1_z[frame-1]])
+
+    # Update line from origin to current point
+    axis_line2.set_data([0, e_c_2_x[frame-1]], [0, e_c_2_y[frame-1]])
+    axis_line2.set_3d_properties([0, e_c_2_z[frame-1]])
+
+    # Update line from origin to current point
+    axis_line3.set_data([0, e_c_3_x[frame-1]], [0, e_c_3_y[frame-1]])
+    axis_line3.set_3d_properties([0, e_c_3_z[frame-1]])
+
+    antenna_line.set_data([0, antenna_x[frame-1]], [0, antenna_y[frame-1]])
+    antenna_line.set_3d_properties([0, antenna_z[frame-1]])
+
+    # Update time text
+    time_text.set_position((1, 0))  # Keep it near origin
+    time_text.set_text(f'Time: {t_vals[frame-1]:.2f}s')
+    time_text.set_3d_properties(omega_z[frame-1])  # Adjust text height dynamically
+
+    return line, point
+
+
+# Create animation
+ani1 = animation.FuncAnimation(fig, update, frames=len(t_vals), interval=50, blit=False)
+nadir_line.set_data([0, 0], [0,  np.sin(np.radians(5))])
+nadir_line.set_3d_properties([0, np.cos(np.radians(5))])
+plt.legend()
+plt.show()
+
+# Compute angle between nadir and antenna
+antenna_offset = np.zeros(len(t_vals))
+for i in range(0, len(t_vals)):
+    antenna_offset[i] = np.acos(np.dot(antenna[i,:], [0,np.sin(np.radians(5)),np.cos(np.radians(5))]) /(
+                             np.linalg.norm(antenna[i,:]) * np.linalg.norm([0,np.sin(np.radians(5)),np.cos(np.radians(5))])))
+
+
+fig5, ax5 = plt.subplots(1, 1, figsize=(12,16))
+fig5.canvas.manager.set_window_title('Antenna Offset')
+ax5.plot(t_vals, np.degrees(antenna_offset))
+#ax5.set_ylim(0, 90)
+ax5.set_title('Antenna Offset vs. Time')
+ax5.legend([r'$\theta^\degree$'])
+
+plt.show()
