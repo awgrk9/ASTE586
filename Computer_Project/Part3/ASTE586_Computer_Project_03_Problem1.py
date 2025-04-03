@@ -1,7 +1,8 @@
 ## ASTE 586 Computer Project
-##      Part 2
+##      Part 3
+##      Problem 1
 ## Andrew Gerth
-## 20250228
+## 20250401
 
 import numpy as np
 import scipy as sp
@@ -10,121 +11,9 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
 
+from Computer_Project.Part3.torqueFree_solver_symm import torqueFree_solver_symm
 
 
-####################################################################################################
-### This section will define the necessary functions                                             ###
-###     1. Definition of the system for the Numerical Solver to chew on                          ###
-###     2. Analytical closed-form solution for Angular Velocity components for any time, t       ###
-###     3. Analytical closed-form solution for Euler-Rodrigues Parameters for any time, t        ###
-###     4. Function to input a 3-coordinate vector and rotate by a quaternion, returning a vector###
-####################################################################################################
-
-
-# Define diff eq system for Numerical Solver in scipy (combine both eqns into 1 function)
-#   t: time
-#   z: state vector (w1, w2, w3, q1, q2, q3, q4)
-#   I: Inertia matrix
-#   returns dz: (dw1, dw2, dw3, dq1, dq2, dq3, dq4)
-def euler_equations(t, z, I):
-    # Computes d(omega)/dt using Euler's equations for a free rigid body.
-    z = np.transpose(z)
-    dz = [0, 0, 0, 0, 0, 0, 0] # Initialize alpha vector
-    # Compute angular acceleration (alpha)
-    dz[0] = (I[1] - I[2]) * z[1] * z[2] / I[0]
-    dz[1] = (I[2] - I[0]) * z[0] * z[2] / I[1]
-    dz[2] = (I[0] - I[1]) * z[0] * z[1] / I[2]
-
-    q1, q2, q3, q4 = z[3:]
-     #print('p', q1, q2, q3, q4)
-    # M can be found in the notes: "aste586-supplement-8-quaternion-rates-20250226.pdf"
-    M = np.array([[ q4, -q3,  q2],
-                  [ q3,  q4, -q1],
-                  [-q2,  q1,  q4],
-                  [-q1, -q2, -q3]])
-    #print(M.shape)
-    #print(z[:3].shape)
-    dq = 0.5 * M @ z[:3]
-    dz[3] = dq[0]
-    dz[4] = dq[1]
-    dz[5] = dq[2]
-    dz[6] = dq[3]
-    return dz
-
-
-## Define function to Compute Analytical Solution for Angular velocity assuming axisymmetry
-#   t: time
-#   omega_0: 1x3 array | Initial Angular Velocity Values
-#   I: inertia matrix
-def euler_analytical(t, omega_0, I):
-    omega = np.zeros((3,1)) # initialize omega vector
-
-    # recognize which axes are symmetric
-    if I[0] is I[1]:
-        symmetry_axis = 2
-        first_axis = 0  # First  equal I_x axis
-        second_axis = 1 # Second equal I_x axis
-        # define lambda based on symmetry axis
-        lamd = omega_0[symmetry_axis] * (I[symmetry_axis] - I[0])/I[0]
-
-    elif I[1] is I[2]:
-        symmetry_axis = 0
-        first_axis = 1   # First  equal I_x axis
-        second_axis = 2  # Second equal I_x axis
-        # define lambda based on symmetry axis
-        lamd = -omega_0[symmetry_axis] * (I[1] - I[symmetry_axis]) / I[1]
-
-    elif I[0] is I[2]:
-        symmetry_axis = 1
-        first_axis = 0   # First  equal I_x axis
-        second_axis = 2  # Second equal I_x axis
-        # define lambda based on symmetry axis
-        lamd = omega_0[symmetry_axis] * (I[0] - I[symmetry_axis]) / I[0]
-
-
-    #print('Symmetry axis has been determined to be: {}.'.format(symmetry_axis+1))
-    #print('First and second axes are: {}, {}.'.format(first_axis + 1, second_axis + 1))
-    ## Analytical solution for Euler's Equations when assuming axisymmetry
-    #   Eqns have been coded with variable indecies to handle any of the three possibilities for axis of sym.
-    omega[first_axis]  = np.cos(lamd * t) * omega_0[first_axis] - np.sin(lamd * t) * omega_0[second_axis]
-    omega[second_axis] = np.sin(lamd * t) * omega_0[first_axis] + np.cos(lamd * t) * omega_0[second_axis]
-    omega[symmetry_axis] = omega_0[symmetry_axis]
-    #print(omega)
-    return np.transpose(omega)
-
-
-## Define function to Compute Analytical Solution for the Quaternion Evolution assuming axisymmetry
-#   t: time
-#   w: 1x3 array | Angular Velocity found at the time step 't' from the analytical solution to Euler's Eqns
-#   q0: 1x4 array | Initial Euler-Rodrigues parameters/quaternion components
-def quat_analytical(t, w, q0):
-    # See my report for further explanation of the M_star term and how it was derived
-    # For the purposes of code commenting, M_star is just a 4x4 skew-symmetric matrix comprised of previously computed
-    #   angular velocity components.
-    #print(w)
-    M_star = np.array([[ 0   ,  w[2], -w[1],  w[0]],
-                       [-w[2],  0   ,  w[0],  w[1]],
-                       [ w[1], -w[0],  0.  ,  w[2]],
-                       [-w[0], -w[1], -w[2],  0   ]])
-
-    A = 1/2*M_star*t
-    eigenvalues, P = np.linalg.eig(A)  # Get eigenvalues and eigenvectors
-    D = np.diag(np.exp(eigenvalues))  # Exponentiate eigenvalues
-    expm_approx = P @ D @ np.linalg.inv(P)  # Compute expm(A) manually
-
-    #print(expm_approx)  # Should match expm(A)
-
-    #q = sp.linalg.expm(0.5 * M_star * t) @ q0
-    q = np.matmul(expm_approx, q0)
-
-
-    return np.transpose(q)
-
-
-## Define function to rotate a vector by a quaternion (scalar last notation)
-#   v: 3d vector
-#   q: 4d vector (x, y, z, s)
-#   returns a new vector (v rotated by q)
 def rotate_vector_by_quaternion(v, q):
     v = np.array(v)
     qv = np.array(q[:3])  # Vector part of quaternion
@@ -140,106 +29,15 @@ def rotate_vector_by_quaternion(v, q):
     return v_rot
 
 
-####################################################################################################
-### This section will Define the Parameters for a particular Test Case                           ###
-####################################################################################################
-test_case = 1
-
-if test_case == 1:
-    I = [1.6975, 1.6975, 2.5272]
-    omega0 = [0, 0.41071176, 4.69445692]  # Initial angular velocity
-    q0 = [0, 0, 0, 1]   # Initial euler-rodrigues parameters
-    t_span = (0, 100)  # Integration time range
-
-else:
-    I = [5, 4, 4]  # Moments of Inertia
-    omega0 = [0.0592384, 0, 0.0740480]  # Initial angular velocity
-    q0 = [0, 0.382683, 0, 0.923880]   # Initial euler-rodrigues parameters
-    t_span = (0, 100)  # Integration time range
-
-state_0 = omega0 + q0 # This is the overall test state initial conditions (w1, w2, w3, q1, q2, q3, q4) at t=0
-
-####################################################################################################
-### This section will compute and plot the numerical solution for both Differential Eqn Systems  ###
-####################################################################################################
-
-# First Solve for angular velocity numerically
-#   Solving numerically first so that the numerical integrator can choose the relevant time steps
-#   I'll then use those same time steps when assessing the analytical solution.
-
-# Solve ODE
-solution_numerical = sp.integrate.solve_ivp(euler_equations,
-                                            t_span=t_span,
-                                            y0=state_0,
-                                            args=(I,),
-                                            rtol=1E-10,
-                                            atol=1E-10)
 
 
-# Extract results
-t_vals       = np.transpose(solution_numerical.t)
-omega_vals   = np.transpose(solution_numerical.y[:3, :])
-q_vals       = np.transpose(solution_numerical.y[3:, :])
+I = [1.6975, 1.6975, 2.5272]
+omega0 = [0, 0.41071176, 4.69445692]  # Initial angular velocity
+q0 = [0, 0, 0, 1]   # Initial euler-rodrigues parameters
+t_span = (0, 30)  # Integration time range
 
-
-####################################################################################################
-### This section will compute and plot the analytical solution for both Differential Eqn Systems ###
-####################################################################################################
-
-
-# Define empty array for analytical omega solution to go into
-omega_analytical = np.zeros((len(t_vals), 3))
-# Compute analytical omega from the 'euler_analytical' function for each time step declared by the numerical integrator
-i = 0
-for time in t_vals:
-    #print(omega_analytical[i, :])
-    omega_analytical[i, :] = euler_analytical(time, omega0, I)
-    #print(omega_analytical[i, :])
-    i = i + 1 # indexer to fill the rows of omega_analytical
-
-
-# Define empty array for analytical quaternion solution to go into
-q_analytical = np.zeros((len(t_vals), 4))
-# Compute analytical quaternions from the 'quat_analytical' function for each time step declared by the numerical integrator
-i = 0
-for time in t_vals:
-    #print(q_analytical[i, :])
-    q_analytical[i, :] = quat_analytical(time, omega_analytical[i, :], q0)
-    #print(q_analytical[i, :])
-
-    i = i + 1 # indexer to fill the rows of q_analytical
-    #print(i)
-
-####################################################################################################
-### Test Case Validation                                                                         ###
-####################################################################################################
-
-## Compute Angular Velocity Difference Numerical-Analytical
-omega_error = omega_vals - omega_analytical
-q_error = q_vals - q_analytical
-
-
-## Compute Quaternion Unity for Numerical and Analytical
-q_unity_numerical  = q_vals[:, 0]**2 + q_vals[:, 1]**2 + q_vals[:, 2]**2 + q_vals[:, 3]**2 - 1
-q_unity_analytical = q_analytical[:, 0]**2 + q_analytical[:, 1]**2 + q_analytical[:, 2]**2 + q_analytical[:, 3]**2 - 1
-
-## Compute Angular Momentum Components represented in Body Frame
-h1_c = I[0] * omega_vals[:, 0]
-h2_c = I[1] * omega_vals[:, 1]
-h3_c = I[2] * omega_vals[:, 2]
-H_c = np.zeros((len(t_vals), 3))
-H_c[:, 0] = h1_c
-H_c[:, 1] = h2_c
-H_c[:, 2] = h3_c
-#print(H_c[:10, :10])
-## Use quaternion at each time step to rotate to Inertial Frame 'F'
-H_f = np.zeros((len(H_c), 3))
-
-
-
-for j in range(0, len(H_f)):
-    H_f[j, :] = rotate_vector_by_quaternion(H_c[j, :], q_vals[j, :])
-
+t_vals, omega_vals, q_vals, H_c, H_f, omega_error, q_unity_numerical, omega_analytical = \
+    (torqueFree_solver_symm(I, omega0, q0, t_span))
 
 
 ####################################################################################################
@@ -403,40 +201,6 @@ fig2.savefig('Errors.png')
 fig3.savefig('Momentum.png')
 fig4.savefig('EulerAngles.png')
 
-# if test_case == 1:
-#     for i, ax in enumerate(ax1):
-#         extent = ax.get_tightbbox(fig1.canvas.get_renderer()).transformed(fig1.dpi_scale_trans.inverted())
-#         fig1.savefig(f"./Part3_Submission/10subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
-#
-#     for i, ax in enumerate(ax2):
-#         extent = ax.get_tightbbox(fig2.canvas.get_renderer()).transformed(fig2.dpi_scale_trans.inverted())
-#         fig2.savefig(f"./Part3_Submission/11subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
-#
-#     for i, ax in enumerate(ax3):
-#         extent = ax.get_tightbbox(fig3.canvas.get_renderer()).transformed(fig3.dpi_scale_trans.inverted())
-#         fig3.savefig(f"./Part3_Submission/12subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
-#
-#     for i, ax in enumerate(ax4):
-#         extent = ax.get_tightbbox(fig4.canvas.get_renderer()).transformed(fig4.dpi_scale_trans.inverted())
-#         fig4.savefig(f"./Part3_Submission/13subplot_{i+1}.png", bbox_inches=extent, pad_inches=0.1)
-# else:
-#     for i, ax in enumerate(ax1):
-#         extent = ax.get_tightbbox(fig1.canvas.get_renderer()).transformed(fig1.dpi_scale_trans.inverted())
-#         fig1.savefig(f"./Part3_Submission/10subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
-#
-#     for i, ax in enumerate(ax2):
-#         extent = ax.get_tightbbox(fig2.canvas.get_renderer()).transformed(fig2.dpi_scale_trans.inverted())
-#         fig2.savefig(f"./Part3_Submission/11subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
-#
-#     for i, ax in enumerate(ax3):
-#         extent = ax.get_tightbbox(fig3.canvas.get_renderer()).transformed(fig3.dpi_scale_trans.inverted())
-#         fig3.savefig(f"./Part3_Submission/12subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
-#
-#     for i, ax in enumerate(ax4):
-#         extent = ax.get_tightbbox(fig4.canvas.get_renderer()).transformed(fig4.dpi_scale_trans.inverted())
-#         fig4.savefig(f"./Part3_Submission/13subplot_{i + 1}.png", bbox_inches=extent, pad_inches=0.1)
-
-#plt.show()
 
 
 ## Use quaternion at each time step to rotate body axes to Inertial Frame 'F'
@@ -465,17 +229,16 @@ omega_z = omega_vals[:,2]
 
 
 # Set axis labels
-ax.set_xlabel('X Component')
-ax.set_ylabel('Y Component')
-ax.set_zlabel('Z Component')
-ax.set_title('Animated 3D Vector Trajectory')
+ax.set_xlabel(r'$e^C_1$')
+ax.set_ylabel(r'$e^C_2$')
+ax.set_zlabel(r'$e^C_3$')
+ax.set_title('Body Fixed Reference Frame Motion (Animated)')
 
 # Initialize plot elements
-line, = ax.plot([], [], [], 'b', label=r'$\omega_0$ trajectory')  # Line for trajectory
-point, = ax.plot([], [], [], 'ro')  # Moving point indicator
-origin_line, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
-axis_line, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
-
+line, = ax.plot([], [], [], 'b', label=r'$\omega$ trajectory')  # Line for trajectory
+axis_line, = ax.plot([], [], [], 'g-', linewidth=2)  # Line from origin to point
+point, = ax.plot([], [], [], 'bo')  # Moving point indicator
+origin_line, = ax.plot([], [], [], 'b-', linewidth=2)  # Line from origin to point
 time_text = ax.text(0, 0, 0, '', fontsize=12, color='black')  # Time text annotation
 
 # Set axis limits
@@ -509,7 +272,7 @@ def update(frame):
 ani = animation.FuncAnimation(fig, update, frames=len(t_vals), interval=50, blit=False)
 axis_line.set_data([0, 0], [0, 0])
 axis_line.set_3d_properties([0, max(omega_z)])
-plt.legend()
+plt.legend(['$\omega$', r'$e^c_3$'])
 plt.show()
 
 
@@ -535,29 +298,30 @@ antenna_x = antenna[:,0]
 antenna_y = antenna[:,1]
 antenna_z = antenna[:,2]  # Set axis labels
 
-ax.set_xlabel('X Component')
-ax.set_ylabel('Y Component')
-ax.set_zlabel('Z Component')
-ax.set_title('Animated 3D Vector Trajectory')
+ax.set_xlabel(r'$e^F_1$')
+ax.set_ylabel(r'$e^F_2$')
+ax.set_zlabel(r'$e^F_3$')
+ax.set_title('Inertial Ref Frame Motion (Animated)')
 
 # Initialize plot elements
 
-antenna_traj, = ax.plot([], [], [], 'o', label='antenna trajectory')  # Line for trajectory
-antenna_point, = ax.plot([], [], [], 'ro')  # Moving point indicator
-e_c_3_traj, = ax.plot([], [], [], 'p', label=r'$e^c_3$ trajectory')  # Line for trajectory
-e_c_3_point, = ax.plot([], [], [], 'ro')  # Moving point indicator
-axis_line1, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
+antenna_traj, = ax.plot([], [], [], 'b', label='antenna trajectory')  # Line for trajectory
+antenna_point, = ax.plot([], [], [], 'bo')  # Moving point indicator
+e_c_3_traj, = ax.plot([], [], [], 'y', label=r'$e^c_3$ trajectory')  # Line for trajectory
+e_c_3_point, = ax.plot([], [], [], 'yo')  # Moving point indicator
+axis_line1, = ax.plot([], [], [], 'r--', linewidth=2)  # Line from origin to point
 axis_line2, = ax.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
-axis_line3, = ax.plot([], [], [], 'y-', linewidth=2)  # Line from origin to point
 nadir_line, = ax.plot([], [], [], 'g-', linewidth=2)  # Line from origin to point
+axis_line3, = ax.plot([], [], [], 'y-', linewidth=2)  # Line from origin to point
+
 antenna_line, = ax.plot([], [], [], 'b-', linewidth=2)  # Line from origin to point
 
 time_text1 = ax.text(0, 0, 0, '', fontsize=12, color='black')  # Time text annotation
 
 # Set axis limits
-ax.set_xlim([-1, 1])
-ax.set_ylim([-1, 1])
-ax.set_zlim([-1, 1])
+ax.set_xlim([0, 1])
+ax.set_ylim([0, 1])
+ax.set_zlim([0, 1])
 
 
 # Animation function
@@ -592,9 +356,9 @@ def update(frame):
     antenna_line.set_3d_properties([0, antenna_z[frame-1]])
 
     # Update time text
-    time_text.set_position((1, 0))  # Keep it near origin
-    time_text.set_text(f'Time: {t_vals[frame-1]:.2f}s')
-    time_text.set_3d_properties(omega_z[frame-1])  # Adjust text height dynamically
+    time_text1.set_position((1, 0))  # Keep it near origin
+    time_text1.set_text(f'Time: {t_vals[frame-1]:.2f}s')
+    time_text1.set_3d_properties(omega_z[frame-1])  # Adjust text height dynamically
 
     return line, point
 
@@ -603,7 +367,7 @@ def update(frame):
 ani1 = animation.FuncAnimation(fig, update, frames=len(t_vals), interval=50, blit=False)
 nadir_line.set_data([0, 0], [0,  np.sin(np.radians(5))])
 nadir_line.set_3d_properties([0, np.cos(np.radians(5))])
-plt.legend()
+plt.legend(['Antenna Pointing', 'Antenna', r'$e^c_3$', r'$e^c_3$', r'$e^c_1$', r'$e^c_2$', 'nadir'])
 plt.show()
 
 # Compute angle between nadir and antenna
@@ -616,8 +380,14 @@ for i in range(0, len(t_vals)):
 fig5, ax5 = plt.subplots(1, 1, figsize=(12,16))
 fig5.canvas.manager.set_window_title('Antenna Offset')
 ax5.plot(t_vals, np.degrees(antenna_offset))
-#ax5.set_ylim(0, 90)
 ax5.set_title('Antenna Offset vs. Time')
 ax5.legend([r'$\theta^\degree$'])
-
+ax5.set_xlabel('time (sec)')
+ax5.set_ylabel('Antenna Offset from Nadir pointing (degrees)')
 plt.show()
+
+print('The minimum antenna offset from nadir: {:.3f} deg'.format(np.degrees(np.min(antenna_offset))))
+print('The maximum antenna offset from nadir: {:.5f} deg'.format(np.degrees(np.max(antenna_offset))))
+
+#ani.save('animation_body.gif', writer='pillow', fps=10)
+#ani1.save('animation_inertial.gif', writer='pillow', fps=10)

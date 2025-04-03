@@ -1,0 +1,80 @@
+from matplotlib import pyplot as plt
+import matplotlib.animation as animation
+from mpl_toolkits.mplot3d import Axes3D
+
+def three_d_omegaplot(t_vals_1, omega_vals_1, case):
+
+    ## Create figure and 3D axis
+    fig2_1 = plt.figure()
+    ax2_1 = fig2_1.add_subplot(111, projection='3d')
+
+    omega_x_1 = omega_vals_1[:,0]
+    omega_y_1 = omega_vals_1[:,1]
+    omega_z_1 = omega_vals_1[:,2]
+
+
+    # Set axis labels
+    ax2_1.set_xlabel(r'$e^C_1$')
+    ax2_1.set_ylabel(r'$e^C_2$')
+    ax2_1.set_zlabel(r'$e^C_3$')
+    ax2_1.set_title('Body Fixed Reference Frame Motion, Case {} (Animated)'.format(case))
+
+    # Initialize plot elements
+    line_1,         = ax2_1.plot([], [], [], 'b', label=r'$\omega$ trajectory')  # Line for trajectory
+    axis_line1,     = ax2_1.plot([], [], [], 'r-', linewidth=2)  # Line from origin to point
+    axis_line2,     = ax2_1.plot([], [], [], 'g-', linewidth=2)  # Line from origin to point
+    axis_line3,     = ax2_1.plot([], [], [], 'y-', linewidth=2)  # Line from origin to point
+    point_1,        = ax2_1.plot([], [], [], 'bo')  # Moving point indicator
+    origin_line_1,  = ax2_1.plot([], [], [], 'b--', linewidth=2)  # Line from origin to point
+    time_text_1     = ax2_1.text(0, 0, 0, '', fontsize=12, color='black')  # Time text annotation
+
+    # Set axis limits
+    if min(omega_x_1) > 0:
+        ax2_1.set_xlim([0, max(omega_x_1)])
+    else:
+        ax2_1.set_xlim([min(omega_x_1), max(omega_x_1)])
+
+    if min(omega_y_1) > 0:
+        ax2_1.set_ylim([0, max(omega_y_1)])
+    else:
+        ax2_1.set_ylim([min(omega_y_1), max(omega_y_1)])
+
+    if min(omega_z_1) > 0:
+        ax2_1.set_zlim([0, max(omega_z_1)])
+    else:
+        ax2_1.set_zlim([min(omega_z_1), max(omega_z_1)])
+
+
+    # Animation function
+    def update_1(frame):
+        line_1.set_data(omega_x_1[:frame], omega_y_1[:frame])
+        line_1.set_3d_properties(omega_z_1[:frame])
+
+        # Ensure point takes a sequence (using a list or array with one element)
+        point_1.set_data([omega_x_1[frame-1]], [omega_y_1[frame-1]])
+        point_1.set_3d_properties([omega_z_1[frame-1]])
+
+        # Update line from origin to current point
+        origin_line_1.set_data([0, omega_x_1[frame-1]], [0, omega_y_1[frame-1]])
+        origin_line_1.set_3d_properties([0, omega_z_1[frame-1]])
+
+        # Update time text
+        time_text_1.set_position((1, 0))  # Keep it near origin
+        time_text_1.set_text(f'Time: {t_vals_1[frame-1]:.2f}s')
+        time_text_1.set_3d_properties(omega_z_1[frame-1])  # Adjust text height dynamically
+
+        return line_1, point_1
+
+
+    # Create animation
+    ani_1 = animation.FuncAnimation(fig2_1, update_1, frames=len(t_vals_1), interval=50, blit=False)
+    axis_line1.set_data([0, max(omega_x_1)], [0, 0])
+    axis_line1.set_3d_properties([0, 0])
+    axis_line2.set_data([0, 0], [0, max(omega_y_1)])
+    axis_line2.set_3d_properties([0, 0])
+    axis_line3.set_data([0, 0], [0, 0])
+    axis_line3.set_3d_properties([0, max(omega_z_1)])
+    plt.legend(['$\omega$', r'$e^c_1$', r'$e^c_2$', r'$e^c_3$'])
+    plt.show()
+
+    return
