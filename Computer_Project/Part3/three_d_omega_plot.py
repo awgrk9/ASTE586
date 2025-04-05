@@ -1,3 +1,5 @@
+import numpy as np
+
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.mplot3d import Axes3D
@@ -44,30 +46,35 @@ def three_d_omegaplot(t_vals_1, omega_vals_1, case):
     else:
         ax2_1.set_zlim([min(omega_z_1), max(omega_z_1)])
 
-
-    # Animation function
     def update_1(frame):
-        line_1.set_data(omega_x_1[:frame], omega_y_1[:frame])
-        line_1.set_3d_properties(omega_z_1[:frame])
+        # Find the index corresponding to the current time 'frame'
+        index = np.argmin(np.abs(t_vals_1 - frame))  # Find closest index to the time value
 
-        # Ensure point takes a sequence (using a list or array with one element)
-        point_1.set_data([omega_x_1[frame-1]], [omega_y_1[frame-1]])
-        point_1.set_3d_properties([omega_z_1[frame-1]])
+        # Now use 'index' to update your data
+        line_1.set_data(omega_x_1[:index], omega_y_1[:index])
+        line_1.set_3d_properties(omega_z_1[:index])
 
-        # Update line from origin to current point
-        origin_line_1.set_data([0, omega_x_1[frame-1]], [0, omega_y_1[frame-1]])
-        origin_line_1.set_3d_properties([0, omega_z_1[frame-1]])
+        point_1.set_data([omega_x_1[index]], [omega_y_1[index]])
+        point_1.set_3d_properties([omega_z_1[index]])
+
+        origin_line_1.set_data([0, omega_x_1[index]], [0, omega_y_1[index]])
+        origin_line_1.set_3d_properties([0, omega_z_1[index]])
 
         # Update time text
-        time_text_1.set_position((1, 0))  # Keep it near origin
-        time_text_1.set_text(f'Time: {t_vals_1[frame-1]:.2f}s')
-        time_text_1.set_3d_properties(omega_z_1[frame-1])  # Adjust text height dynamically
+        time_text_1.set_position((1, 0))
+        time_text_1.set_text(f'Time: {frame:.2f}s')
+        time_text_1.set_3d_properties(omega_z_1[index])
 
         return line_1, point_1
 
+    step = 1
+    indices = np.arange(0, len(t_vals_1), step)
+    t_sub = t_vals_1[indices]
 
+    print(type(t_vals_1))
+    print(np.shape(t_vals_1))
     # Create animation
-    ani_1 = animation.FuncAnimation(fig2_1, update_1, frames=len(t_vals_1), interval=50, blit=False)
+    ani_1 = animation.FuncAnimation(fig2_1, update_1, frames=t_sub, interval=50, blit=False)
     axis_line1.set_data([0, max(omega_x_1)], [0, 0])
     axis_line1.set_3d_properties([0, 0])
     axis_line2.set_data([0, 0], [0, max(omega_y_1)])
@@ -76,5 +83,8 @@ def three_d_omegaplot(t_vals_1, omega_vals_1, case):
     axis_line3.set_3d_properties([0, max(omega_z_1)])
     plt.legend(['$\omega$', r'$e^c_1$', r'$e^c_2$', r'$e^c_3$'])
     plt.show()
+
+
+    #ani_1.save('case' + str(case) +'_animation.gif', writer='pillow', fps=30)
 
     return
