@@ -31,7 +31,7 @@ def rotate_vector_by_quaternion(v, q):
 
 
 
-I = [1.6975, 1.6975, 2.5272]
+I = [2.39493, 2.39493, 2.5272]
 omega0 = [0, 0.41071176, 4.69445692]  # Initial angular velocity
 q0 = [0, 0, 0, 1]   # Initial euler-rodrigues parameters
 t_span = (0, 30)  # Integration time range
