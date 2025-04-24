@@ -4,7 +4,7 @@ from matplotlib import pyplot as plt
 
 def euler_angle_plotter(theta_vals, psi_vals, phi_vals, t_vals, case, ref_axis):
     ## Plot Euler Angles for Case 1
-    fig, ax = plt.subplots(3, 1, figsize=(12,16))
+    fig, ax = plt.subplots(3, 1, figsize=(12,10))
     fig.canvas.manager.set_window_title(r'Case ' + str(case) + '; Reference Axis ' + r'$\vec{e}^C$')
     plt.subplots_adjust(hspace=0.4)
     ax[0].plot(t_vals, np.degrees(theta_vals))
@@ -17,6 +17,20 @@ def euler_angle_plotter(theta_vals, psi_vals, phi_vals, t_vals, case, ref_axis):
     for i in range(0, len(ax)):
         ax[i].set_xlabel('time (s)')
         ax[i].set_ylabel('degrees')
+
+    plt.show()
+
+    return
+
+def angular_velocity_plotter(t, w, case):
+
+    fig1, ax1 = plt.subplots(1, 1, figsize=(12,5))
+    fig1.canvas.manager.set_window_title('Components of Angular Velocity in Body System')
+    ax1.plot(t, w)
+    ax1.legend([r'$\omega_1$', r'$\omega_2$', r'$\omega_3$'])
+    ax1.set_title('Angular Velocity in C Coordinate System: Case {}'.format(case))
+    ax1.set_xlabel('time (s)')
+    ax1.set_ylabel('rad/s')
 
     plt.show()
 
