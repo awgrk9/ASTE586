@@ -2,7 +2,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 
-def euler_angle_plotter(theta_vals, psi_vals, phi_vals, t_vals, case, ref_axis):
+def euler_angle_plotter(theta_vals, psi_vals, phi_vals, t_vals, case, ref_axis, show, save):
     ## Plot Euler Angles for Case 1
     fig, ax = plt.subplots(3, 1, figsize=(12,10))
     fig.canvas.manager.set_window_title(r'Case ' + str(case) + '; Reference Axis ' + r'$\vec{e}^C$')
@@ -18,11 +18,17 @@ def euler_angle_plotter(theta_vals, psi_vals, phi_vals, t_vals, case, ref_axis):
         ax[i].set_xlabel('time (s)')
         ax[i].set_ylabel('degrees')
 
-    plt.show()
+    if show is True:
+        plt.show()
+
+    if save is True:
+        fig.savefig('EulerAngle_Plot_Case_' + str(case) + '.png')
+
+    plt.close()
 
     return
 
-def angular_velocity_plotter(t, w, case):
+def angular_velocity_plotter(t, w, case, show, save):
 
     fig1, ax1 = plt.subplots(1, 1, figsize=(12,5))
     fig1.canvas.manager.set_window_title('Components of Angular Velocity in Body System')
@@ -32,11 +38,17 @@ def angular_velocity_plotter(t, w, case):
     ax1.set_xlabel('time (s)')
     ax1.set_ylabel('rad/s')
 
-    plt.show()
+    if show is True:
+        plt.show()
+
+    if save is True:
+        fig1.savefig('AngularVelocity_Plot_Case_' + str(case) + '.png')
+
+    plt.close()
 
     return
 
-def angular_momentum_error_plotter(t, ang, case):
+def angular_momentum_error_plotter(t, ang, case, show, save):
     fig, ax = plt.subplots(1, 1, figsize=(12,5))
     fig.canvas.manager.set_window_title(r'Case ' + str(case))
     ax.plot(t, ang-ang[0, :])
@@ -46,11 +58,17 @@ def angular_momentum_error_plotter(t, ang, case):
     ax.set_xlabel('time (s)')
     ax.set_ylabel(r'$kg*m^2/s$')
 
-    plt.show()
+    if show is True:
+        plt.show()
+
+    if save is True:
+        fig.savefig('AngularMomentumError_Plot_Case_' + str(case) + '.png')
+
+    plt.close()
 
     return
 
-def energy_plotter(t, energy, case):
+def energy_plotter(t, energy, case, show, save):
     fig, ax = plt.subplots(1, 1, figsize=(12, 5))
     fig.canvas.manager.set_window_title(r'Case ' + str(case))
     ax.plot(t, energy)
@@ -59,11 +77,17 @@ def energy_plotter(t, energy, case):
     ax.set_xlabel('time (s)')
     ax.set_ylabel('energy (J)')
 
-    plt.show()
+    if show is True:
+        plt.show()
+
+    if save is True:
+        fig.savefig('Energy_Plot_Case_' + str(case) + '.png')
+
+    plt.close()
 
     return
 
-def damper_pos_plotter(t, damper_pos, case):
+def damper_pos_plotter(t, damper_pos, case, show, save):
     fig, ax = plt.subplots(1, 1, figsize=(12, 5))
     fig.canvas.manager.set_window_title(r'Case ' + str(case))
     ax.plot(t, damper_pos)
@@ -72,6 +96,12 @@ def damper_pos_plotter(t, damper_pos, case):
     ax.set_xlabel('time (s)')
     ax.set_ylabel('angular position (rad)')
 
-    plt.show()
+    if show is True:
+        plt.show()
+
+    if save is True:
+        fig.savefig('DamperPos_Plot_Case_' + str(case) + '.png')
+
+    plt.close()
 
     return
