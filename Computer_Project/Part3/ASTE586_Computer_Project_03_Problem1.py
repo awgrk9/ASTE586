@@ -34,7 +34,7 @@ def rotate_vector_by_quaternion(v, q):
 I = [2.39493, 2.39493, 2.5272]
 omega0 = [0, 0.41071176, 4.69445692]  # Initial angular velocity
 q0 = [0, 0, 0, 1]   # Initial euler-rodrigues parameters
-t_span = (0, 30)  # Integration time range
+t_span = (0, 100)  # Integration time range
 
 t_vals, omega_vals, q_vals, H_c, H_f, omega_error, q_unity_numerical, omega_analytical = \
     (torqueFree_solver_symm(I, omega0, q0, t_span))
@@ -249,27 +249,32 @@ ax.set_zlim([0, max(omega_z)])
 
 # Animation function
 def update(frame):
-    line.set_data(omega_x[:frame], omega_y[:frame])
-    line.set_3d_properties(omega_z[:frame])
+    index = np.argmin(np.abs(t_vals - frame))  # Find closest index to the time value
+
+    line.set_data(omega_x[:index], omega_y[:index])
+    line.set_3d_properties(omega_z[:index])
 
     # Ensure point takes a sequence (using a list or array with one element)
-    point.set_data([omega_x[frame-1]], [omega_y[frame-1]])
-    point.set_3d_properties([omega_z[frame-1]])
+    point.set_data([omega_x[index-1]], [omega_y[index-1]])
+    point.set_3d_properties([omega_z[index-1]])
 
     # Update line from origin to current point
-    origin_line.set_data([0, omega_x[frame-1]], [0, omega_y[frame-1]])
-    origin_line.set_3d_properties([0, omega_z[frame-1]])
+    origin_line.set_data([0, omega_x[index-1]], [0, omega_y[index-1]])
+    origin_line.set_3d_properties([0, omega_z[index-1]])
 
     # Update time text
     time_text.set_position((1, 0))  # Keep it near origin
-    time_text.set_text(f'Time: {t_vals[frame-1]:.2f}s')
-    time_text.set_3d_properties(omega_z[frame-1])  # Adjust text height dynamically
+    time_text.set_text(f'Time: {t_vals[index-1]:.2f}s')
+    time_text.set_3d_properties(omega_z[index-1])  # Adjust text height dynamically
 
     return line, point
 
+step = 50
+indices = np.arange(0, len(t_vals), step)
+t_sub = t_vals[indices]
 
 # Create animation
-ani = animation.FuncAnimation(fig, update, frames=len(t_vals), interval=50, blit=False)
+ani = animation.FuncAnimation(fig, update, frames=t_sub, interval=50, blit=False)
 axis_line.set_data([0, 0], [0, 0])
 axis_line.set_3d_properties([0, max(omega_z)])
 plt.legend(['$\omega$', r'$e^c_3$'])
@@ -326,45 +331,46 @@ ax.set_zlim([0, 1])
 
 # Animation function
 def update(frame):
+    index = np.argmin(np.abs(t_vals - frame))  # Find closest index to the time value
 
-    antenna_traj.set_data(antenna_x[:frame], antenna_y[:frame])
-    antenna_traj.set_3d_properties(antenna_z[:frame])
+    antenna_traj.set_data(antenna_x[:index], antenna_y[:index])
+    antenna_traj.set_3d_properties(antenna_z[:index])
 
-    e_c_3_traj.set_data(e_c_3_x[:frame], e_c_3_y[:frame])
-    e_c_3_traj.set_3d_properties(e_c_3_z[:frame])
+    e_c_3_traj.set_data(e_c_3_x[:index], e_c_3_y[:index])
+    e_c_3_traj.set_3d_properties(e_c_3_z[:index])
 
     # Ensure point takes a sequence (using a list or array with one element)
-    e_c_3_point.set_data([e_c_3_x[frame-1]], [e_c_3_y[frame-1]])
-    e_c_3_point.set_3d_properties([e_c_3_z[frame-1]])
+    e_c_3_point.set_data([e_c_3_x[index-1]], [e_c_3_y[index-1]])
+    e_c_3_point.set_3d_properties([e_c_3_z[index-1]])
 
-    antenna_point.set_data([antenna_x[frame-1]], [antenna_y[frame-1]])
-    antenna_point.set_3d_properties([antenna_z[frame-1]])
-
-    # Update line from origin to current point
-    axis_line1.set_data([0, e_c_1_x[frame-1]], [0, e_c_1_y[frame-1]])
-    axis_line1.set_3d_properties([0, e_c_1_z[frame-1]])
+    antenna_point.set_data([antenna_x[index-1]], [antenna_y[index-1]])
+    antenna_point.set_3d_properties([antenna_z[index-1]])
 
     # Update line from origin to current point
-    axis_line2.set_data([0, e_c_2_x[frame-1]], [0, e_c_2_y[frame-1]])
-    axis_line2.set_3d_properties([0, e_c_2_z[frame-1]])
+    axis_line1.set_data([0, e_c_1_x[index-1]], [0, e_c_1_y[index-1]])
+    axis_line1.set_3d_properties([0, e_c_1_z[index-1]])
 
     # Update line from origin to current point
-    axis_line3.set_data([0, e_c_3_x[frame-1]], [0, e_c_3_y[frame-1]])
-    axis_line3.set_3d_properties([0, e_c_3_z[frame-1]])
+    axis_line2.set_data([0, e_c_2_x[index-1]], [0, e_c_2_y[index-1]])
+    axis_line2.set_3d_properties([0, e_c_2_z[index-1]])
 
-    antenna_line.set_data([0, antenna_x[frame-1]], [0, antenna_y[frame-1]])
-    antenna_line.set_3d_properties([0, antenna_z[frame-1]])
+    # Update line from origin to current point
+    axis_line3.set_data([0, e_c_3_x[index-1]], [0, e_c_3_y[index-1]])
+    axis_line3.set_3d_properties([0, e_c_3_z[index-1]])
+
+    antenna_line.set_data([0, antenna_x[index-1]], [0, antenna_y[index-1]])
+    antenna_line.set_3d_properties([0, antenna_z[index-1]])
 
     # Update time text
     time_text1.set_position((1, 0))  # Keep it near origin
-    time_text1.set_text(f'Time: {t_vals[frame-1]:.2f}s')
-    time_text1.set_3d_properties(omega_z[frame-1])  # Adjust text height dynamically
+    time_text1.set_text(f'Time: {t_vals[index-1]:.2f}s')
+    time_text1.set_3d_properties(omega_z[index-1])  # Adjust text height dynamically
 
     return line, point
 
 
 # Create animation
-ani1 = animation.FuncAnimation(fig, update, frames=len(t_vals), interval=50, blit=False)
+ani1 = animation.FuncAnimation(fig, update, frames=t_sub, interval=50, blit=False)
 nadir_line.set_data([0, 0], [0,  np.sin(np.radians(5))])
 nadir_line.set_3d_properties([0, np.cos(np.radians(5))])
 plt.legend(['Antenna Pointing', 'Antenna', r'$e^c_3$', r'$e^c_3$', r'$e^c_1$', r'$e^c_2$', 'nadir'])
@@ -377,7 +383,7 @@ for i in range(0, len(t_vals)):
                              np.linalg.norm(antenna[i,:]) * np.linalg.norm([0,np.sin(np.radians(5)),np.cos(np.radians(5))])))
 
 
-fig5, ax5 = plt.subplots(1, 1, figsize=(12,16))
+fig5, ax5 = plt.subplots(1, 1, figsize=(12,6))
 fig5.canvas.manager.set_window_title('Antenna Offset')
 ax5.plot(t_vals, np.degrees(antenna_offset))
 ax5.set_title('Antenna Offset vs. Time')
@@ -386,8 +392,10 @@ ax5.set_xlabel('time (sec)')
 ax5.set_ylabel('Antenna Offset from Nadir pointing (degrees)')
 plt.show()
 
+fig5.savefig('Antenna_Offset.png')
+
 print('The minimum antenna offset from nadir: {:.3f} deg'.format(np.degrees(np.min(antenna_offset))))
 print('The maximum antenna offset from nadir: {:.5f} deg'.format(np.degrees(np.max(antenna_offset))))
 
-#ani.save('animation_body.gif', writer='pillow', fps=10)
-#ani1.save('animation_inertial.gif', writer='pillow', fps=10)
+ani.save('animation_body.gif', writer='pillow', fps=30)
+ani1.save('animation_inertial.gif', writer='pillow', fps=30)
