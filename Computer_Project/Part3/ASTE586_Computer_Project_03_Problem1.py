@@ -398,4 +398,4 @@ print('The minimum antenna offset from nadir: {:.3f} deg'.format(np.degrees(np.m
 print('The maximum antenna offset from nadir: {:.5f} deg'.format(np.degrees(np.max(antenna_offset))))
 
 ani.save('animation_body.gif', writer='pillow', fps=30)
-ani1.save('animation_inertial.gif', writer='pillow', fps=30)
+ani1.save('animation_inertial.gif', writer='pillow', fps=10)
