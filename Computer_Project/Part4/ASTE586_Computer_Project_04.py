@@ -4,6 +4,7 @@
 ## Andrew Gerth
 ## 20250408
 
+import numpy as np
 
 from Computer_Project.Part4.euler_angle_finder_damping import euler_angle_finder_damping
 from Computer_Project.Part4.torqueFree_solver_damping import torqueFree_solver_damping
@@ -43,7 +44,7 @@ w0_5_1 = (50**2 - w0_5_3**2)**0.5 # ensure magnitude of w0_5 == 50 rad/s
 w0_5 = [w0_5_1, 0, w0_5_3] # rad/s
 print('Initial angular velocity for improved Intelsat Case: {}'.format(w0_5))
 q0_5 = [0, 0, 0, 1]
-damper_props_5 = [0, 0, 0.5, 120, 1]       # [theta_d_0 (rad), big_omega_d_0 (rad/s), I_d(kg*m^2), D(Nm/(rad/s)), K (Nm/rad)
+damper_props_5 = [0, 0, 2.34, 60, 1500]       # [theta_d_0 (rad), big_omega_d_0 (rad/s), I_d(kg*m^2), D(Nm/(rad/s)), K (Nm/rad)
 
 # Case 6 -- Section 4.3 Case (Improvements on Intelsat)
 I_6 = [300, 300, 1200] # kg * m^2
@@ -52,13 +53,14 @@ w0_6_1 = (50**2 - w0_5_3**2)**0.5 # ensure magnitude of w0_5 == 50 rad/s
 w0_6 = [w0_6_1, 0, w0_6_3] # rad/s
 print('Initial angular velocity for improved Intelsat Case: {}'.format(w0_5))
 q0_6 = [0, 0, 0, 1]
-damper_props_6 = [0, 0, 20, 200, 1000]       # [theta_d_0 (rad), big_omega_d_0 (rad/s), I_d(kg*m^2), D(Nm/(rad/s)), K (Nm/rad)
+damper_props_6 = [0, 0, 3.5, 60, 1500]       # [theta_d_0 (rad), big_omega_d_0 (rad/s), I_d(kg*m^2), D(Nm/(rad/s)), K (Nm/rad)
 
 
-t_span_1 = (0, 500) # sec
+t_span_1 = (0, 5) # sec
 t_span_2 = (0, 5) # sec
-t_span_3 = (0, 10) # sec
-t_span_4 = (0, 10) # sec
+#t_span_3 = (0, 7200) # sec
+t_span_3 = (0, 1) # sec
+t_span_4 = (0, 1) # sec
 t_span_5 = (0, 5) # sec
 t_span_6 = (0, 5) # sec
 
@@ -97,8 +99,17 @@ H_f = [0] * len(t_vals)
 
 for i in range(0, len(t_vals)):
 
+    # Introduce separate variable for 3d plot animation rendering, as doing it all for
+    #   this lengthy of a simulation can take a while...
+    if i == 4: # i = desired_case - 1
+        threed_save = True
+    else:
+        threed_save = False
+
+
+
     # Produce 3d plots for each case, showing which axis is encircled by the angular velocity vector
-    three_d_omegaplot(t_vals[i], omega_vals[i], case=i+1, show=show_all_plots, save=False)
+    three_d_omegaplot(t_vals[i], omega_vals[i], case=i+1, show=show_all_plots, save=threed_save)
 
     if i == 0:
         ref = 2
@@ -120,6 +131,10 @@ for i in range(0, len(t_vals)):
     # Plot Euler Angles
     euler_angle_plotter(theta[i][:], psi[i][:], phi[i][:], t_vals[i], case=i+1, ref_axis=ref,
                         show=show_all_plots, save=save_all_plots)
+
+    if i == 4 or i == 5:
+        print('Final Nutation Angle: {} deg'.format(np.degrees(theta[i][-1])))
+
 
     ## Plot Angular Momentum Vectors in Inertial Frame (should be zero)
     angular_momentum_error_plotter(t_vals[i], H_f[i], case=i+1, show=show_all_plots, save=save_all_plots)

@@ -67,7 +67,7 @@ def three_d_omegaplot(t_vals_1, omega_vals_1, case, show, save):
 
         return line_1, point_1
 
-    step = 20
+    step = 30
     indices = np.arange(0, len(t_vals_1), step)
     t_sub = t_vals_1[indices]
 

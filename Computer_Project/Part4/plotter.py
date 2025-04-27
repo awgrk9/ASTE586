@@ -49,7 +49,7 @@ def angular_velocity_plotter(t, w, case, show, save):
     return
 
 def angular_momentum_error_plotter(t, ang, case, show, save):
-    fig, ax = plt.subplots(1, 1, figsize=(12,5))
+    fig, ax = plt.subplots(1, 1, figsize=(12,6))
     fig.canvas.manager.set_window_title(r'Case ' + str(case))
     ax.plot(t, ang-ang[0, :])
     ax.set_title('Angular Momentum difference from initial Angular Momentum\nRepresented in the Inertial Frame, F\n'
